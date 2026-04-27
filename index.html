@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>IC Traditional Life Insurance Mock Exam</title>
+
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+
+body{
+  margin:0;
+  font-family:Segoe UI, Arial, sans-serif;
+  background:#0b1b2b;
+  color:#fff;
+}
+
+/* LOGIN */
+#loginScreen{
+  position:fixed;
+  inset:0;
+  background:#0b1b2b;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+  padding:20px;
+}
+
+#loginScreen h2{font-size:18px;margin-bottom:15px;}
+
+#nameInput{
+  width:100%;
+  max-width:320px;
+  padding:12px;
+  border-radius:10px;
+  border:none;
+}
+
+#loginScreen button{
+  margin-top:10px;
+  width:100%;
+  max-width:320px;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:linear-gradient(135deg,#00c6ff,#0072ff);
+  color:#fff;
+  font-weight:bold;
+}
+
+.container{max-width:900px;margin:auto;padding:12px;}
+
+.header{
+  position:sticky;
+  top:0;
+  background:rgba(10,20,35,0.95);
+  padding:12px;
+  text-align:center;
+}
+
+h1{font-size:16px;margin:0;}
+
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  font-size:12px;
+  margin-top:6px;
+}
+
+.timer{color:#ffd369;font-weight:bold;}
+.score{color:#7CFF6B;font-weight:bold;}
+
+.progress{height:6px;background:#ffffff22;border-radius:10px;margin-top:8px;}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,#00c6ff,#0072ff);}
+
+.card{
+  background:#ffffff10;
+  margin-top:12px;
+  padding:14px;
+  border-radius:14px;
+}
+
+label{
+  display:flex;
+  gap:10px;
+  padding:10px;
+  background:#ffffff10;
+  margin:6px 0;
+  border-radius:10px;
+}
+
+button{
+  width:100%;
+  padding:14px;
+  margin-top:14px;
+  border:none;
+  border-radius:12px;
+  font-weight:bold;
+  background:linear-gradient(135deg,#00c6ff,#0072ff);
+  color:white;
+}
+
+.explanation{
+  display:none;
+  margin-top:10px;
+  padding:10px;
+  border-left:3px solid #00c6ff;
+  background:#ffffff10;
+}
+</style>
+</head>
+
+<body>
+
+<div id="loginScreen">
+  <h2>Enter Your Name to Start Exam</h2>
+  <input id="nameInput" placeholder="Full Name">
+  <button onclick="startExam()">Start Exam</button>
+</div>
+
+<div class="container">
+
+  <div class="header">
+    <h1>IC TRADITIONAL LIFE INSURANCE MOCK EXAM</h1>
+    <div class="topbar">
+      <div class="timer" id="timer">60:00</div>
+      <div class="score" id="scoreTop">Score: --</div>
+    </div>
+    <div class="progress">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+  </div>
+
+  <form id="quizForm"></form>
+
+  <button onclick="submitQuiz()">Submit Exam</button>
+</div>
+
+<script>
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbytz3QDrucqn0TJ9BWd-W9bLqAdUJJxRjxzwLsFL-TuNEPnage0CYoux24QdIPMYle6kA/exec";
+
+let user = sessionStorage.getItem("exam_user");
+let questions = [];
+let time = 3600;
+let timerInterval;
+
+function startTimer(){
+  timerInterval = setInterval(()=>{
+    let m = Math.floor(time/60);
+    let s = time % 60;
+
+    document.getElementById("timer").innerText =
+      `${m}:${s<10?'0':''}${s}`;
+
+    time--;
+
+    if(time < 0){
+      clearInterval(timerInterval);
+      submitQuiz();
+    }
+  },1000);
+}
+
+function startExam(){
+  let name = document.getElementById("nameInput").value.trim();
+  if(!name) return alert("Enter name");
+
+  user = name;
+  sessionStorage.setItem("exam_user", name);
+  document.getElementById("loginScreen").style.display="none";
+
+  loadQuestions();
+  startTimer();
+}
+
+/* LOAD FROM SHEETS */
+function loadQuestions(){
+  fetch(GOOGLE_SCRIPT_URL)
+    .then(r => r.json())
+    .then(data => {
+
+      shuffle(data);
+
+      // ✅ NOW 100 QUESTIONS
+      questions = data.slice(0,100);
+
+      render();
+    })
+    .catch(err => console.error("LOAD ERROR", err));
+}
+
+if(user){
+  window.addEventListener("load", ()=>{
+    document.getElementById("loginScreen").style.display="none";
+    loadQuestions();
+    startTimer();
+  });
+}
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    let j=Math.random()*i|0;
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+}
+
+function render(){
+  const form=document.getElementById("quizForm");
+  form.innerHTML="";
+
+  questions.forEach((q,i)=>{
+    let choices=[...q.c];
+    shuffle(choices);
+
+    q.correct = choices.indexOf(q.c[q.a]);
+
+    let div=document.createElement("div");
+    div.className="card";
+    div.innerHTML=`
+      <p><b>${i+1}.</b> ${q.q}</p>
+      ${choices.map((c,j)=>`
+        <label>
+          <input type="radio" name="q${i}" value="${j}"> ${c}
+        </label>
+      `).join("")}
+      <div class="explanation" id="e${i}"></div>
+    `;
+    form.appendChild(div);
+  });
+}
+
+function submitQuiz(){
+  let score=0;
+
+  questions.forEach((q,i)=>{
+    let sel=document.querySelector(`input[name=q${i}]:checked`);
+    let e=document.getElementById("e"+i);
+
+    if(sel && parseInt(sel.value)===q.correct){
+      score++;
+      e.innerHTML="✅ "+q.e;
+    } else {
+      e.innerHTML="❌ "+q.e;
+    }
+
+    e.style.display="block";
+  });
+
+  // ✅ 90% PASSING
+  let passing = Math.ceil(questions.length * 0.9);
+  let result = score >= passing ? "PASS" : "FAIL";
+
+  document.getElementById("scoreTop").innerText =
+    `Score: ${score}/${questions.length} - ${result}`;
+
+  fetch(GOOGLE_SCRIPT_URL,{
+    method:"POST",
+    body:JSON.stringify({
+      name:user||"UNKNOWN",
+      score: score + "/" + questions.length,
+      result:result
+    })
+  });
+
+  alert(`Submitted! You scored ${score}/${questions.length}. Passing: ${passing}`);
+}
+</script>
+
+</body>
+</html>
