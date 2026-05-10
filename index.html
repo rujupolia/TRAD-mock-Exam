@@ -1,34 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-<title>IC Traditional Life Insurance Mock Exam</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>TRAD Mock Exam</title>
+
+<link rel="manifest" href="manifest.json">
 
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-
 body{
   margin:0;
-  font-family:Segoe UI, Arial, sans-serif;
+  font-family:Segoe UI, Arial;
   background:#0b1b2b;
   color:#fff;
 }
 
-/* LOGIN */
 #loginScreen{
   position:fixed;
   inset:0;
-  background:#0b1b2b;
   display:flex;
   flex-direction:column;
-  align-items:center;
   justify-content:center;
-  z-index:9999;
+  align-items:center;
+  background:#0b1b2b;
   padding:20px;
+  z-index:9999;
 }
-
-#loginScreen h2{font-size:18px;margin-bottom:15px;}
 
 #nameInput{
   width:100%;
@@ -38,76 +35,61 @@ body{
   border:none;
 }
 
-#loginScreen button{
-  margin-top:10px;
+button{
   width:100%;
   max-width:320px;
   padding:12px;
+  margin-top:10px;
   border:none;
   border-radius:10px;
-  background:linear-gradient(135deg,#00c6ff,#0072ff);
-  color:#fff;
+  background:#0072ff;
+  color:white;
   font-weight:bold;
 }
 
-.container{max-width:900px;margin:auto;padding:12px;}
+.container{
+  max-width:900px;
+  margin:auto;
+  padding:10px;
+}
 
 .header{
   position:sticky;
   top:0;
-  background:rgba(10,20,35,0.95);
+  background:#10243b;
   padding:12px;
-  text-align:center;
 }
-
-h1{font-size:16px;margin:0;}
 
 .topbar{
   display:flex;
   justify-content:space-between;
-  font-size:12px;
-  margin-top:6px;
+  margin-top:8px;
 }
 
 .timer{color:#ffd369;font-weight:bold;}
 .score{color:#7CFF6B;font-weight:bold;}
 
-.progress{height:6px;background:#ffffff22;border-radius:10px;margin-top:8px;}
-.progress-bar{height:100%;width:0;background:linear-gradient(90deg,#00c6ff,#0072ff);}
-
 .card{
   background:#ffffff10;
-  margin-top:12px;
   padding:14px;
-  border-radius:14px;
+  margin-top:12px;
+  border-radius:12px;
 }
 
 label{
-  display:flex;
-  gap:10px;
-  padding:10px;
-  background:#ffffff10;
+  display:block;
+  padding:8px;
   margin:6px 0;
-  border-radius:10px;
-}
-
-button{
-  width:100%;
-  padding:14px;
-  margin-top:14px;
-  border:none;
-  border-radius:12px;
-  font-weight:bold;
-  background:linear-gradient(135deg,#00c6ff,#0072ff);
-  color:white;
+  background:#ffffff10;
+  border-radius:8px;
 }
 
 .explanation{
   display:none;
   margin-top:10px;
   padding:10px;
-  border-left:3px solid #00c6ff;
   background:#ffffff10;
+  border-left:3px solid #00c6ff;
 }
 </style>
 </head>
@@ -115,7 +97,7 @@ button{
 <body>
 
 <div id="loginScreen">
-  <h2>Enter Your Name to Start Exam</h2>
+  <h2>Enter Your Name</h2>
   <input id="nameInput" placeholder="Full Name">
   <button onclick="startExam()">Start Exam</button>
 </div>
@@ -123,33 +105,38 @@ button{
 <div class="container">
 
   <div class="header">
-    <h1>IC TRADITIONAL LIFE INSURANCE MOCK EXAM</h1>
+    <h2>TRAD MOCK EXAM</h2>
+
     <div class="topbar">
       <div class="timer" id="timer">60:00</div>
       <div class="score" id="scoreTop">Score: --</div>
-    </div>
-    <div class="progress">
-      <div class="progress-bar" id="progressBar"></div>
     </div>
   </div>
 
   <form id="quizForm"></form>
 
-  <button onclick="submitQuiz()">Submit Exam</button>
+  <button onclick="submitQuiz()">Submit</button>
+
 </div>
 
 <script>
+
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("service-worker.js");
+}
+
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbytz3QDrucqn0TJ9BWd-W9bLqAdUJJxRjxzwLsFL-TuNEPnage0CYoux24QdIPMYle6kA/exec";
 
 let user = sessionStorage.getItem("exam_user");
 let questions = [];
 let time = 3600;
-let timerInterval;
+let timer;
 
+/* TIMER */
 function startTimer(){
-  timerInterval = setInterval(()=>{
+  timer = setInterval(()=>{
     let m = Math.floor(time/60);
-    let s = time % 60;
+    let s = time%60;
 
     document.getElementById("timer").innerText =
       `${m}:${s<10?'0':''}${s}`;
@@ -157,115 +144,180 @@ function startTimer(){
     time--;
 
     if(time < 0){
-      clearInterval(timerInterval);
+      clearInterval(timer);
       submitQuiz();
     }
   },1000);
 }
 
+/* START EXAM */
 function startExam(){
+
   let name = document.getElementById("nameInput").value.trim();
   if(!name) return alert("Enter name");
 
   user = name;
   sessionStorage.setItem("exam_user", name);
+
   document.getElementById("loginScreen").style.display="none";
 
   loadQuestions();
   startTimer();
 }
 
-/* LOAD FROM SHEETS */
-function loadQuestions(){
-  fetch(GOOGLE_SCRIPT_URL)
-    .then(r => r.json())
-    .then(data => {
-
-      shuffle(data);
-
-      // ✅ NOW 100 QUESTIONS
-      questions = data.slice(0,100);
-
-      render();
-    })
-    .catch(err => console.error("LOAD ERROR", err));
-}
-
+/* AUTO LOGIN */
 if(user){
-  window.addEventListener("load", ()=>{
+  window.addEventListener("load",()=>{
     document.getElementById("loginScreen").style.display="none";
     loadQuestions();
     startTimer();
   });
 }
 
+/* SHUFFLE */
 function shuffle(a){
   for(let i=a.length-1;i>0;i--){
-    let j=Math.random()*i|0;
+    let j=Math.floor(Math.random()*(i+1));
     [a[i],a[j]]=[a[j],a[i]];
   }
 }
 
+/* LOAD QUESTIONS */
+function loadQuestions(){
+
+  if(navigator.onLine){
+
+    fetch(GOOGLE_SCRIPT_URL)
+      .then(r=>r.json())
+      .then(data=>{
+
+        console.log("Loaded:", data.length);
+
+        localStorage.setItem("cachedQuestions", JSON.stringify(data));
+
+        shuffle(data);
+
+        questions = data.slice(0,110);
+
+        render();
+
+      })
+      .catch(loadOffline);
+
+  }else{
+    loadOffline();
+  }
+}
+
+/* OFFLINE MODE */
+function loadOffline(){
+
+  let cached = localStorage.getItem("cachedQuestions");
+
+  if(!cached){
+    alert("No offline data. Open once online first.");
+    return;
+  }
+
+  let data = JSON.parse(cached);
+
+  shuffle(data);
+
+  questions = data.slice(0,110);
+
+  render();
+
+  alert("Offline Mode");
+}
+
+/* RENDER */
 function render(){
-  const form=document.getElementById("quizForm");
+
+  const form = document.getElementById("quizForm");
   form.innerHTML="";
 
   questions.forEach((q,i)=>{
-    let choices=[...q.c];
+
+    let choices = [...q.c];
     shuffle(choices);
 
     q.correct = choices.indexOf(q.c[q.a]);
 
-    let div=document.createElement("div");
+    let div = document.createElement("div");
     div.className="card";
-    div.innerHTML=`
+
+    div.innerHTML = `
       <p><b>${i+1}.</b> ${q.q}</p>
+
       ${choices.map((c,j)=>`
         <label>
-          <input type="radio" name="q${i}" value="${j}"> ${c}
+          <input type="radio" name="q${i}" value="${j}">
+          ${c}
         </label>
       `).join("")}
+
       <div class="explanation" id="e${i}"></div>
     `;
+
     form.appendChild(div);
   });
 }
 
+/* SUBMIT */
 function submitQuiz(){
-  let score=0;
+
+  clearInterval(timer);
+
+  let score = 0;
 
   questions.forEach((q,i)=>{
-    let sel=document.querySelector(`input[name=q${i}]:checked`);
-    let e=document.getElementById("e"+i);
+
+    let sel = document.querySelector(`input[name=q${i}]:checked`);
+    let e = document.getElementById("e"+i);
 
     if(sel && parseInt(sel.value)===q.correct){
       score++;
-      e.innerHTML="✅ "+q.e;
-    } else {
-      e.innerHTML="❌ "+q.e;
+      e.innerHTML="✅ Correct<br>"+q.e;
+    }else{
+      e.innerHTML="❌ Wrong<br>Answer: <b>"+q.c[q.a]+"</b><br>"+q.e;
     }
 
     e.style.display="block";
   });
 
-  // ✅ 90% PASSING
-  let passing = Math.ceil(questions.length * 0.9);
-  let result = score >= passing ? "PASS" : "FAIL";
+  let passing = Math.ceil(questions.length*0.90);
+  let result = score>=passing ? "PASS":"FAIL";
 
   document.getElementById("scoreTop").innerText =
     `Score: ${score}/${questions.length} - ${result}`;
 
-  fetch(GOOGLE_SCRIPT_URL,{
-    method:"POST",
-    body:JSON.stringify({
-      name:user||"UNKNOWN",
-      score: score + "/" + questions.length,
-      result:result
-    })
-  });
+  if(navigator.onLine){
 
-  alert(`Submitted! You scored ${score}/${questions.length}. Passing: ${passing}`);
+    fetch(GOOGLE_SCRIPT_URL,{
+      method:"POST",
+      body:JSON.stringify({
+        name:user,
+        score:`${score}/${questions.length}`,
+        result:result
+      })
+    });
+
+  }else{
+
+    let logs = JSON.parse(localStorage.getItem("offlineResults")||"[]");
+
+    logs.push({
+      name:user,
+      score:`${score}/${questions.length}`,
+      result:result
+    });
+
+    localStorage.setItem("offlineResults", JSON.stringify(logs));
+  }
+
+  alert(`Score: ${score}/${questions.length}\nResult: ${result}`);
 }
+
 </script>
 
 </body>

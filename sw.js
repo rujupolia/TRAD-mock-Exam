@@ -1,55 +1,60 @@
-const CACHE_NAME = "trad-offline-v1";
+function loadQuestions(){
 
-const OFFLINE_ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.json",
-  "/icon-192.png",
-  "/icon-512.png"
-];
+  // ONLINE
+  if(navigator.onLine){
 
-/* INSTALL: cache core files */
-self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(OFFLINE_ASSETS);
-    })
-  );
-  self.skipWaiting();
-});
+    fetch(GOOGLE_SCRIPT_URL)
 
-/* ACTIVATE: clean old caches */
-self.addEventListener("activate", event => {
-  event.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
-        keys
-          .filter(k => k !== CACHE_NAME)
-          .map(k => caches.delete(k))
-      );
-    })
-  );
-  self.clients.claim();
-});
+      .then(r => r.json())
 
-/* FETCH STRATEGY (OFFLINE FIRST CORE MODE) */
-self.addEventListener("fetch", event => {
-  const req = event.request;
+      .then(data => {
 
-  // 1. Try cache first (offline support)
-  event.respondWith(
-    caches.match(req).then(cached => {
-      if (cached) return cached;
+        // SAVE QUESTIONS OFFLINE
+        localStorage.setItem(
+          "cachedQuestions",
+          JSON.stringify(data)
+        );
 
-      // 2. If not cached, try network
-      return fetch(req).then(networkRes => {
-        return networkRes;
-      }).catch(() => {
-        // 3. fallback: return main page for navigation
-        if (req.mode === "navigate") {
-          return caches.match("/");
-        }
+        shuffle(data);
+
+        questions = data.slice(0,110);
+
+        renderQuestions();
+      })
+
+      .catch(() => {
+
+        loadOfflineQuestions();
       });
-    })
-  );
-});
+
+  }else{
+
+    loadOfflineQuestions();
+  }
+}
+
+function loadOfflineQuestions(){
+
+  let cached =
+    localStorage.getItem("cachedQuestions");
+
+  if(!cached){
+
+    alert(
+      "No offline questions available yet.\n\n" +
+      "Please connect to internet first."
+    );
+
+    return;
+  }
+
+  let data = JSON.parse(cached);
+
+  shuffle(data);
+
+  questions = data.slice(0,110);
+
+  renderQuestions();
+
+  alert("Offline Mode Enabled");
+}
